@@ -20,5 +20,5 @@ function yesOrNo(answer: Answer) {
 }
 
 yesOrNo(Answer.Yes);
-yesOrNo("Yes"); //오류발생. 이넘을 사용했기 때문에 이념의 데이터만 넣어야한다.
+// yesOrNo("Yes"); //오류발생. 이넘을 사용했기 때문에 이념의 데이터만 넣어야한다.
  
