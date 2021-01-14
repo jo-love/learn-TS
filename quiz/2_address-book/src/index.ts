@@ -1,29 +1,12 @@
-interface PhoneNumberDictionary {
-  [phone: string]: {
-    num: number;
-  };
-}
-
-interface Contact {
-  name: string;
-  address: string;
-  phones: PhoneNumberDictionary;
-}
-
-enum PhoneType {
-  Home = 'home',
-  Office = 'office',
-  Studio = 'studio',
-}
-
+import { Contact, PhoneType } from "./types";
 // api
 // TODO: 아래 함수의 반환 타입을 지정해보세요.
 function fetchContacts(): Promise<Contact[]> {
   // TODO: 아래 변수의 타입을 지정해보세요.
   const contacts: Contact[] = [
     {
-      name: 'Tony',
-      address: 'Malibu',
+      name: "Tony",
+      address: "Malibu",
       phones: {
         home: {
           num: 11122223333,
@@ -34,8 +17,8 @@ function fetchContacts(): Promise<Contact[]> {
       },
     },
     {
-      name: 'Banner',
-      address: 'New York',
+      name: "Banner",
+      address: "New York",
       phones: {
         home: {
           num: 77788889999,
@@ -43,8 +26,8 @@ function fetchContacts(): Promise<Contact[]> {
       },
     },
     {
-      name: '마동석',
-      address: '서울시 강남구',
+      name: "마동석",
+      address: "서울시 강남구",
       phones: {
         home: {
           num: 213423452,
@@ -55,7 +38,7 @@ function fetchContacts(): Promise<Contact[]> {
       },
     },
   ];
-  return new Promise(resolve => {
+  return new Promise((resolve) => {
     setTimeout(() => resolve(contacts), 2000);
   });
 }
@@ -71,7 +54,7 @@ class AddressBook {
 
   //비동기처리를 한 후, 셋업을 하는거지 return값이 있는 것이 아니여서 함수의 반환값이 없다는 void
   fetchData(): void {
-    fetchContacts().then(response => {
+    fetchContacts().then((response) => {
       this.contacts = response;
     });
   }
@@ -79,29 +62,29 @@ class AddressBook {
   /* TODO: 아래 함수들의 파라미터 타입과 반환 타입을 지정해보세요 */
   //home, office, studio 3가지 폰타입이넘을 이용해서 파라미터 제한하기
   findContactByName(name: string): Contact[] {
-    return this.contacts.filter(contact => contact.name === name);
+    return this.contacts.filter((contact) => contact.name === name);
   }
 
   findContactByAddress(address: string): Contact[] {
-    return this.contacts.filter(contact => contact.address === address);
+    return this.contacts.filter((contact) => contact.address === address);
   }
 
   findContactByPhone(phoneNumber: number, phoneType: PhoneType): Contact[] {
     return this.contacts.filter(
-      contact => contact.phones[phoneType].num === phoneNumber
+      (contact) => contact.phones[phoneType].num === phoneNumber
     );
-  } 
+  }
 
   addContact(contact: Contact): void {
     this.contacts.push(contact);
   }
 
   displayListByName(): string[] {
-    return this.contacts.map(contact => contact.name);
+    return this.contacts.map((contact) => contact.name);
   }
 
   displayListByAddress(): string[] {
-    return this.contacts.map(contact => contact.address);
+    return this.contacts.map((contact) => contact.address);
   }
   /* ------------------------------------------------ */
 }
@@ -110,8 +93,8 @@ new AddressBook();
 //프로미스 안에 들어오는 비동기 코드의 타입을 알 수가 없다.
 //프로미스가 기본적으로 제네릭을 이용하여 정의한다.
 function fetchItems(): Promise<string[]> {
-  const items = ['a', 'b', 'c'];
-  return new Promise(resolve => {
+  const items = ["a", "b", "c"];
+  return new Promise((resolve) => {
     resolve(items);
   });
 }
