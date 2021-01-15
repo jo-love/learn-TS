@@ -6,7 +6,7 @@ function fetchContacts(): Promise<Contact[]> {
   const contacts: Contact[] = [
     {
       name: "Tony",
-      address: "Malibu",
+      address: 'Malibu',
       phones: {
         home: {
           num: 11122223333,
