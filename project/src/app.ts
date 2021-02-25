@@ -1,10 +1,17 @@
-import axios from "axios";
+import axios, { AxiosResponse } from "axios";
 import * as Chart from "chart.js";
+import {
+  CountrySummaryResponse,
+  CovidSummaryResponse,
+  CountryInfo,
+  CountrySummaryInfo,
+} from "./covid/index";
 // utils
 function $(selector: string) {
   return document.querySelector(selector);
 }
-function getUnixTimestamp(date: Date) {
+// 날짜를 받아오는 api속성은 대부분이 string으로 받아오기 때문에 string도 함께 포함시켜야 한다.
+function getUnixTimestamp(date: Date | string) {
   return new Date(date).getTime();
 }
 
@@ -13,11 +20,14 @@ const confirmedTotal = $(".confirmed-total") as HTMLSpanElement;
 const deathsTotal = $(".deaths") as HTMLParagraphElement;
 const recoveredTotal = $(".recovered") as HTMLParagraphElement;
 const lastUpdatedTime = $(".last-updated-time") as HTMLParagraphElement;
-const rankList = $(".rank-list");
-const deathsList = $(".deaths-list");
-const recoveredList = $(".recovered-list");
-const deathSpinner = createSpinnerElement("deaths-spinner");
-const recoveredSpinner = createSpinnerElement("recovered-spinner");
+const rankList = $(".rank-list") as HTMLOListElement;
+const deathsList = $(".deaths-list") as HTMLOListElement;
+const recoveredList = $(".recovered-list") as HTMLOListElement;
+const deathSpinner = createSpinnerElement("deaths-spinner") as HTMLDivElement;
+const recoveredSpinner = createSpinnerElement(
+  "recovered-spinner"
+) as HTMLDivElement;
+const lineChart = $("#lineChart") as HTMLCanvasElement;
 
 function createSpinnerElement(id: string) {
   const wrapperDiv = document.createElement("div");
@@ -36,9 +46,9 @@ function createSpinnerElement(id: string) {
 
 // state
 let isDeathLoading = false;
-let isRecoveredLoading = false;
 
-function fetchCovidSummary(): AxiosPromise {
+// api
+function fetchCovidSummary(): Promise<AxiosResponse<CovidSummaryResponse>> {
   const url = "https://api.covid19api.com/summary";
   return axios.get(url);
 }
@@ -49,9 +59,12 @@ enum CovidStatus {
   Deaths = "deaths",
 }
 // 컨츠리 코드 나라가 너무 많아서 이넘은 의미가 없다. status는 한정적이기 때문에 enum사용하면 좋다.
-function fetchCountryInfo(countryCode: string, status: CovidStatus) {
+function fetchCountryInfo(
+  countryName: string,
+  status: CovidStatus
+): Promise<AxiosResponse<CountrySummaryResponse>> {
   // params: confirmed, recovered, deaths
-  const url = `https://api.covid19api.com/country/${countryCode}/status/${status}`;
+  const url = `https://api.covid19api.com/country/${countryName}/status/${status}`;
   return axios.get(url);
 }
 
@@ -66,7 +79,7 @@ function initEvents() {
   rankList.addEventListener("click", handleListClick);
 }
 
-async function handleListClick(event: any) {
+async function handleListClick(event: MouseEvent) {
   let selectedId;
   if (
     event.target instanceof HTMLParagraphElement ||
@@ -105,15 +118,16 @@ async function handleListClick(event: any) {
   isDeathLoading = false;
 }
 
-function setDeathsList(data: any) {
+function setDeathsList(data: CountrySummaryResponse) {
   const sorted = data.sort(
-    (a: any, b: any) => getUnixTimestamp(b.Date) - getUnixTimestamp(a.Date)
+    (a: CountrySummaryInfo, b: CountrySummaryInfo) =>
+      getUnixTimestamp(b.Date) - getUnixTimestamp(a.Date)
   );
-  sorted.forEach((value: any) => {
+  sorted.forEach((value: CountrySummaryInfo) => {
     const li = document.createElement("li");
     li.setAttribute("class", "list-item-b flex align-center");
     const span = document.createElement("span");
-    span.textContent = value.Cases;
+    span.textContent = value.Cases.toString();
     span.setAttribute("class", "deaths");
     const p = document.createElement("p");
     p.textContent = new Date(value.Date).toLocaleDateString().slice(0, -1);
@@ -127,19 +141,20 @@ function clearDeathList() {
   deathsList.innerHTML = null;
 }
 
-function setTotalDeathsByCountry(data: any) {
-  deathsTotal.innerText = data[0].Cases;
+function setTotalDeathsByCountry(data: CountrySummaryResponse) {
+  deathsTotal.innerText = data[0].Cases.toString();
 }
 
-function setRecoveredList(data) {
+function setRecoveredList(data: CountrySummaryResponse) {
   const sorted = data.sort(
-    (a, b) => getUnixTimestamp(b.Date) - getUnixTimestamp(a.Date)
+    (a: CountrySummaryInfo, b: CountrySummaryInfo) =>
+      getUnixTimestamp(b.Date) - getUnixTimestamp(a.Date)
   );
-  sorted.forEach((value) => {
+  sorted.forEach((value: CountrySummaryInfo) => {
     const li = document.createElement("li");
     li.setAttribute("class", "list-item-b flex align-center");
     const span = document.createElement("span");
-    span.textContent = value.Cases;
+    span.textContent = value.Cases.toString();
     span.setAttribute("class", "recovered");
     const p = document.createElement("p");
     p.textContent = new Date(value.Date).toLocaleDateString().slice(0, -1);
@@ -153,8 +168,8 @@ function clearRecoveredList() {
   recoveredList.innerHTML = null;
 }
 
-function setTotalRecoveredByCountry(data) {
-  recoveredTotal.innerText = data[0].Cases;
+function setTotalRecoveredByCountry(data: CountrySummaryResponse) {
+  recoveredTotal.innerText = data[0].Cases.toString();
 }
 
 function startLoadingAnimation() {
@@ -176,8 +191,8 @@ async function setupData() {
   setLastUpdatedTimestamp(data);
 }
 
-function renderChart(data, labels) {
-  var ctx = $("#lineChart").getContext("2d");
+function renderChart(data: number[], labels: string[]) {
+  var ctx = lineChart.getContext("2d");
   Chart.defaults.global.defaultFontColor = "#f5eaea";
   Chart.defaults.global.defaultFontFamily = "Exo 2";
   new Chart(ctx, {
@@ -197,45 +212,51 @@ function renderChart(data, labels) {
   });
 }
 
-function setChartData(data) {
-  const chartData = data.slice(-14).map((value) => value.Cases);
+function setChartData(data: CountrySummaryResponse) {
+  const chartData = data
+    .slice(-14)
+    .map((value: CountrySummaryInfo) => value.Cases);
   const chartLabel = data
     .slice(-14)
-    .map((value) => new Date(value.Date).toLocaleDateString().slice(5, -1));
+    .map((value: CountrySummaryInfo) =>
+      new Date(value.Date).toLocaleDateString().slice(5, -1)
+    );
   renderChart(chartData, chartLabel);
 }
 
-function setTotalConfirmedNumber(data) {
+//innerText는 string, reduce의 결과는 number이기 때문에 매치가 안된다. reduce부분을 string으로 바꾸기
+function setTotalConfirmedNumber(data: CovidSummaryResponse) {
   confirmedTotal.innerText = data.Countries.reduce(
-    (total, current) => (total += current.TotalConfirmed),
+    (total: number, current: CountryInfo) => (total += current.TotalConfirmed),
     0
-  );
+  ).toString();
 }
 
-function setTotalDeathsByWorld(data) {
+function setTotalDeathsByWorld(data: CovidSummaryResponse) {
   deathsTotal.innerText = data.Countries.reduce(
-    (total, current) => (total += current.TotalDeaths),
+    (total: number, current: CountryInfo) => (total += current.TotalDeaths),
     0
-  );
+  ).toString();
 }
 
-function setTotalRecoveredByWorld(data) {
+function setTotalRecoveredByWorld(data: CovidSummaryResponse) {
   recoveredTotal.innerText = data.Countries.reduce(
-    (total, current) => (total += current.TotalRecovered),
+    (total: number, current: CountryInfo) => (total += current.TotalRecovered),
     0
-  );
+  ).toString();
 }
 
-function setCountryRanksByConfirmedCases(data) {
+// 가장 확진자 수가 높은 나라를 상위로 소트
+function setCountryRanksByConfirmedCases(data: CovidSummaryResponse) {
   const sorted = data.Countries.sort(
-    (a, b) => b.TotalConfirmed - a.TotalConfirmed
+    (a: CountryInfo, b: CountryInfo) => b.TotalConfirmed - a.TotalConfirmed
   );
-  sorted.forEach((value) => {
+  sorted.forEach((value: CountryInfo) => {
     const li = document.createElement("li");
     li.setAttribute("class", "list-item flex align-center");
     li.setAttribute("id", value.Slug);
     const span = document.createElement("span");
-    span.textContent = value.TotalConfirmed;
+    span.textContent = value.TotalConfirmed.toString();
     span.setAttribute("class", "cases");
     const p = document.createElement("p");
     p.setAttribute("class", "country");
@@ -246,7 +267,7 @@ function setCountryRanksByConfirmedCases(data) {
   });
 }
 
-function setLastUpdatedTimestamp(data) {
+function setLastUpdatedTimestamp(data: CovidSummaryResponse) {
   lastUpdatedTime.innerText = new Date(data.Date).toLocaleString();
 }
 
