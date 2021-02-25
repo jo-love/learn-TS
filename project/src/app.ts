@@ -7,8 +7,9 @@ import {
   CountrySummaryInfo,
 } from "./covid/index";
 // utils
-function $(selector: string) {
-  return document.querySelector(selector);
+function $<T extends HTMLElement>(selector: string) {
+  const element = document.querySelector(selector);
+  return element as T;
 }
 // 날짜를 받아오는 api속성은 대부분이 string으로 받아오기 때문에 string도 함께 포함시켜야 한다.
 function getUnixTimestamp(date: Date | string) {
@@ -16,6 +17,7 @@ function getUnixTimestamp(date: Date | string) {
 }
 
 // DOM
+const temp = $<HTMLParagraphElement>('.abc')
 const confirmedTotal = $(".confirmed-total") as HTMLSpanElement;
 const deathsTotal = $(".deaths") as HTMLParagraphElement;
 const recoveredTotal = $(".recovered") as HTMLParagraphElement;
@@ -23,7 +25,7 @@ const lastUpdatedTime = $(".last-updated-time") as HTMLParagraphElement;
 const rankList = $(".rank-list") as HTMLOListElement;
 const deathsList = $(".deaths-list") as HTMLOListElement;
 const recoveredList = $(".recovered-list") as HTMLOListElement;
-const deathSpinner = createSpinnerElement("deaths-spinner") as HTMLDivElement;
+const deathSpinner = createSpinnerElement("deaths-spinner");
 const recoveredSpinner = createSpinnerElement(
   "recovered-spinner"
 ) as HTMLDivElement;
@@ -60,7 +62,7 @@ enum CovidStatus {
 }
 // 컨츠리 코드 나라가 너무 많아서 이넘은 의미가 없다. status는 한정적이기 때문에 enum사용하면 좋다.
 function fetchCountryInfo(
-  countryName: string,
+  countryName: string | undefined,
   status: CovidStatus
 ): Promise<AxiosResponse<CountrySummaryResponse>> {
   // params: confirmed, recovered, deaths
@@ -75,17 +77,23 @@ function startApp() {
 }
 
 // events
+//strict로 인해서 null인 경우도 생각해줘야 한다. ranklist가 없다면 = null 로 타입 가드를 통해서 null인 경우를 빠져나가게 해준다.
 function initEvents() {
+  if (!rankList) {
+    return;
+  }
   rankList.addEventListener("click", handleListClick);
 }
 
-async function handleListClick(event: MouseEvent) {
+async function handleListClick(event: Event) {
   let selectedId;
   if (
     event.target instanceof HTMLParagraphElement ||
     event.target instanceof HTMLSpanElement
   ) {
-    selectedId = event.target.parentElement.id;
+    selectedId = event.target.parentElement
+      ? event.target.parentElement.id
+      : undefined;
   }
   if (event.target instanceof HTMLLIElement) {
     selectedId = event.target.id;
@@ -133,12 +141,15 @@ function setDeathsList(data: CountrySummaryResponse) {
     p.textContent = new Date(value.Date).toLocaleDateString().slice(0, -1);
     li.appendChild(span);
     li.appendChild(p);
-    deathsList.appendChild(li);
+    deathsList!.appendChild(li);
   });
 }
 
 function clearDeathList() {
-  deathsList.innerHTML = null;
+  if (!deathsList) {
+    return;
+  }
+  deathsList.innerHTML = "";
 }
 
 function setTotalDeathsByCountry(data: CountrySummaryResponse) {
@@ -160,12 +171,12 @@ function setRecoveredList(data: CountrySummaryResponse) {
     p.textContent = new Date(value.Date).toLocaleDateString().slice(0, -1);
     li.appendChild(span);
     li.appendChild(p);
-    recoveredList.appendChild(li);
+    recoveredList?.appendChild(li);
   });
 }
 
 function clearRecoveredList() {
-  recoveredList.innerHTML = null;
+  recoveredList.innerHTML = "";
 }
 
 function setTotalRecoveredByCountry(data: CountrySummaryResponse) {
